@@ -46,7 +46,8 @@ int starting_grid[] = {
 int puzzle[6];                          // The 6 tiles we selected
 int target;                             // The number are we trying to hit
 int closest;                            // The closest we've got to the target number
-std::vector<std::vector<step>> matches; // Matches that we found
+std::vector<step> match;                // Best match that we found
+int lowest_steps = 7;                   // Smallest number of steps so far
 
 auto permute_add(std::vector<step> &s, const std::vector<int> &v) -> void;
 auto permute_subtract(std::vector<step> &s, const std::vector<int> &v) -> void;
@@ -56,10 +57,14 @@ auto permute_divide(std::vector<step> &s, const std::vector<int> &v) -> void;
 /*
  * Output a step vector.
  */
-auto dump_steps(const std::vector<step> &s, const std::string &str) -> void {
-    auto sz = s.size();
-    std::cout << str << ": ";
+auto dump_steps(const std::vector<step> &s) -> void {
+    if (closest == target) {
+        std::cout << "solved: ";
+    } else {
+        std::cout << abs(target - closest) << " away: ";
+    }
 
+    auto sz = s.size();
     for (auto i = 0; i < sz; ++i) {
         if (i != 0) {
             std::cout << ", ";
@@ -111,31 +116,38 @@ auto permute_common(std::vector<step> &s, std::vector<int> &r, const std::vector
     s.emplace_back(step(new_val, op, v[i], v[j]));
 
     if (new_val == target) {
-        matches.push_back(s);
+        match = s;
+        lowest_steps = s.size();
         closest = new_val;
     }
 
     /*
-     * If we have more than 2 values in our input vector then we can iterate further,
-     * combining our new result with all unused inputs.
+     * If another iteration can still result in a shorter solution than the best
+     * we've found so far then proceed.
      */
-    if (sz > 2) {
-        r.reserve(sz - 1);
-        r.emplace_back(new_val);
+    if ((lowest_steps - 1) > s.size()) {
+        /*
+         * If we have more than 2 values in our input vector then we can iterate further,
+         * combining our new result with all unused inputs.
+         */
+        if (sz > 2) {
+            r.reserve(sz - 1);
+            r.emplace_back(new_val);
 
-        for (auto k = 0; k < sz; ++k) {
-            if ((k != i) && (k != j)) {
-                r.emplace_back(v[k]);
+            for (auto k = 0; k < sz; ++k) {
+                if ((k != i) && (k != j)) {
+                    r.emplace_back(v[k]);
+                }
             }
+
+            permute_all(s, r);
+            r.clear();
         }
 
-        permute_all(s, r);
-        r.clear();
-    }
-
-    if (abs(target - new_val) < abs(target - closest)) {
-        dump_steps(s, "close");
-        closest = new_val;
+        if (abs(target - new_val) < abs(target - closest)) {
+            match = s;
+            closest = new_val;
+        }
     }
 
     s.pop_back();
@@ -296,9 +308,9 @@ auto setup_puzzle() -> std::vector<int> {
     srandom(time(NULL));
 
     /*
-     * Pick a random target.
+     * Pick a random target in the range 101 to 999.
      */
-    target = random() % 1000;
+    target = (random() % 899) + 101;
     closest = 0;
 
     /*
@@ -344,10 +356,7 @@ auto main(int argc, char **argv) -> int {
     std::vector<step> s;
     permute_all(s, v);
 
-    auto num_matches = matches.size();
-    for (auto i = 0; i < num_matches; ++i) {
-        dump_steps(matches[i], "exact");
-    }
+    dump_steps(match);
 
     return 0;
 }
