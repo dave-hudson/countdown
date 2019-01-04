@@ -19,57 +19,141 @@ int puzzle[6];
 
 int target;
 int closest;
+bool find_all_exact = true;
 
 /*
  * Result enum.
  */
 enum class permute_result {
-    match,
-    close,
-    nothing
+    match,                              // We got an exact match
+    close,                              // We have our current closest match
+    nothing                             // This path has yielded nothing new
 };
 
-auto permute_add(const std::vector<int> &v) -> permute_result;
-auto permute_subtract(const std::vector<int> &v) -> permute_result;
-auto permute_multiply(const std::vector<int> &v) -> permute_result;
-auto permute_divide(const std::vector<int> &v) -> permute_result;
+/*
+ * Operator type enum.
+ */
+enum class operator_type {
+    add,
+    subtract,
+    multiply,
+    divide
+};
+
+/*
+ * Computation step recording.
+ */
+class step {
+public:
+    int _result;
+    operator_type _op_type;
+    int _operand1;
+    int _operand2;
+
+    step(int result, operator_type op_type, int operand1, int operand2) {
+        _result = result;
+        _op_type = op_type;
+        _operand1 = operand1;
+        _operand2 = operand2;
+    }
+};
+
+auto permute_add(std::vector<step> &s, const std::vector<int> &v) -> permute_result;
+auto permute_subtract(std::vector<step> &s, const std::vector<int> &v) -> permute_result;
+auto permute_multiply(std::vector<step> &s, const std::vector<int> &v) -> permute_result;
+auto permute_divide(std::vector<step> &s, const std::vector<int> &v) -> permute_result;
+
+/*
+ * Output a step vector.
+ */
+auto dump_steps(const std::vector<step> &s, const std::string &str) {
+    auto sz = s.size();
+    std::cout << str << ": ";
+
+    for (auto i = 0; i < sz; ++i) {
+        if (i != 0) {
+            std::cout << ", ";
+        }
+
+        auto &st = s[i];
+        std::cout << st._result << " = " << st._operand1;
+
+        switch (st._op_type) {
+        case operator_type::add:
+            std::cout << " + ";
+            break;
+
+        case operator_type::subtract:
+            std::cout << " - ";
+            break;
+
+        case operator_type::multiply:
+            std::cout << " * ";
+            break;
+
+        case operator_type::divide:
+            std::cout << " / ";
+            break;
+        }
+
+        std::cout << st._operand2;
+    }
+
+    std::cout << '\n';
+}
 
 /*
  * Run all the possible permutations for the current input vector.
  */
-auto permute_all(const std::vector<int> &v) -> permute_result {
+auto permute_all(std::vector<step> &s, const std::vector<int> &v) -> permute_result {
     permute_result ret = permute_result::nothing;
 
-    auto pa = permute_add(v);
+    auto pa = permute_add(s, v);
     if (pa == permute_result::match) {
-        return permute_result::match;
+        if (!find_all_exact) {
+            return permute_result::match;
+        }
+
+        ret = permute_result::match;
     }
 
     if (pa == permute_result::close) {
         ret = permute_result::close;
     }
 
-    auto ps = permute_subtract(v);
+    auto ps = permute_subtract(s, v);
     if (ps == permute_result::match) {
-        return permute_result::match;
+        if (!find_all_exact) {
+            return permute_result::match;
+        }
+
+        ret = permute_result::match;
     }
 
     if (ps == permute_result::close) {
         ret = permute_result::close;
     }
 
-    auto pm = permute_multiply(v);
+    auto pm = permute_multiply(s, v);
     if (pm == permute_result::match) {
-        return permute_result::match;
+        if (!find_all_exact) {
+            return permute_result::match;
+        }
+
+        ret = permute_result::match;
     }
 
     if (pm == permute_result::close) {
         ret = permute_result::close;
     }
 
-    auto pd = permute_divide(v);
+    auto pd = permute_divide(s, v);
     if (pd == permute_result::match) {
-        return permute_result::match;
+        if (!find_all_exact) {
+            return permute_result::match;
+        }
+
+        ret = permute_result::match;
     }
 
     if (pd == permute_result::close) {
@@ -82,35 +166,37 @@ auto permute_all(const std::vector<int> &v) -> permute_result {
 /*
  * Run permutations of an input vector for addition.
  */
-auto permute_add(const std::vector<int> &v) -> permute_result {
+auto permute_add(std::vector<step> &s, const std::vector<int> &v) -> permute_result {
     auto sz = v.size();
     permute_result ret = permute_result::nothing;
     std::vector<int> r;
 
-    for (auto i = 0; i < sz; ++i) {
-        for (auto j = 0; j < sz; ++j) {
+    /*
+     * We want to find all the permutations of additions within the input vector.
+     * Addition is commutative so (a + b) = (b + a), meaning we don't need to examine
+     * any scenarios we've already seen.
+     */
+    for (auto i = 0; i < (sz - 1); ++i) {
+        for (auto j = i + 1; j < sz; ++j) {
             /*
-             * We can't use the same tile or intermediate value twice.
+             * Compute a permutation, and check if it results in an exact match.
              */
-            if (i == j) {
-                continue;
-            }
-
             auto new_val = v[i] + v[j];
+            s.emplace_back(step(new_val, operator_type::add, v[i], v[j]));
+
             if (new_val == target) {
-                std::cout << "\nexact: " << new_val << " = " << v[i] << " + " << v[j] << '\n';
-                return permute_result::match;
+                dump_steps(s, "exact");
+                if (!find_all_exact) {
+                    return permute_result::match;
+                }
+
+                closest = new_val;
+                ret = permute_result::match;
             }
 
             /*
-             * If our subtraction results in a zero value then it's a dead end.
-             */
-            if (new_val == 0) {
-                break;
-            }
-
-            /*
-             * If we have more than 2 values then we can iterate further.
+             * If we have more than 2 values in our input vector then we can iterate further,
+             * combining our new result with all unused inputs.
              */
             if (sz > 2) {
                 r.reserve(sz - 1);
@@ -122,20 +208,23 @@ auto permute_add(const std::vector<int> &v) -> permute_result {
                     }
                 }
 
-                auto pa = permute_all(r);
-                if (pa != permute_result::nothing) {
-                    std::cout << new_val << " = " << v[i] << " + " << v[j] << '\n';
-                    return pa;
+                auto pa = permute_all(s, r);
+                if (pa == permute_result::match) {
+                    if (!find_all_exact) {
+                        return permute_result::match;
+                    }
                 }
 
                 r.clear();
             }
 
             if (abs(target - new_val) < abs(target - closest)) {
-                std::cout << "\nclose: " << new_val << " = " << v[i] << " + " << v[j] << '\n';
+                dump_steps(s, "close");
                 closest = new_val;
                 ret = permute_result::close;
             }
+
+            s.pop_back();
         }
     }
 
@@ -145,7 +234,7 @@ auto permute_add(const std::vector<int> &v) -> permute_result {
 /*
  * Run permutations of an input vector for subtraction.
  */
-auto permute_subtract(const std::vector<int> &v) -> permute_result {
+auto permute_subtract(std::vector<step> &s, const std::vector<int> &v) -> permute_result {
     auto sz = v.size();
     permute_result ret = permute_result::nothing;
     std::vector<int> r;
@@ -160,10 +249,6 @@ auto permute_subtract(const std::vector<int> &v) -> permute_result {
             }
 
             auto new_val = v[i] - v[j];
-            if (new_val == target) {
-                std::cout << "\nexact: " << new_val << " = " << v[i] << " - " << v[j] << '\n';
-                return permute_result::match;
-            }
 
             /*
              * If our subtraction results in a zero value then it's a dead end.  Similarly,
@@ -171,11 +256,32 @@ auto permute_subtract(const std::vector<int> &v) -> permute_result {
              * subtraction rather than an addition.
              */
             if (new_val <= 0) {
-                break;
+                continue;
             }
 
             /*
-             * If we have more than 2 values then we can iterate further.
+             * If our subtraction results in the same value as our subtrahend then we've also
+             * hit a dead end because we've not introduced any useful new intermediate value.
+             */
+            if (new_val == v[j]) {
+                continue;
+            }
+
+            s.emplace_back(step(new_val, operator_type::subtract, v[i], v[j]));
+
+            if (new_val == target) {
+                dump_steps(s, "exact");
+                if (!find_all_exact) {
+                    return permute_result::match;
+                }
+
+                closest = new_val;
+                ret = permute_result::match;
+            }
+
+            /*
+             * If we have more than 2 values in our input vector then we can iterate further,
+             * combining our new result with all unused inputs.
              */
             if (sz > 2) {
                 r.reserve(sz - 1);
@@ -187,20 +293,23 @@ auto permute_subtract(const std::vector<int> &v) -> permute_result {
                     }
                 }
 
-                auto pa = permute_all(r);
-                if (pa != permute_result::nothing) {
-                    std::cout << new_val << " = " << v[i] << " - " << v[j] << '\n';
-                    return pa;
+                auto pa = permute_all(s, r);
+                if (pa == permute_result::match) {
+                    if (!find_all_exact) {
+                        return permute_result::match;
+                    }
                 }
 
                 r.clear();
             }
 
             if (abs(target - new_val) < abs(target - closest)) {
-                std::cout << "\nclose: " << new_val << " = " << v[i] << " - " << v[j] << '\n';
+                dump_steps(s, "close");
                 closest = new_val;
                 ret = permute_result::close;
             }
+
+            s.pop_back();
         }
     }
 
@@ -210,7 +319,86 @@ auto permute_subtract(const std::vector<int> &v) -> permute_result {
 /*
  * Run permutations of an input vector for multiplication.
  */
-auto permute_multiply(const std::vector<int> &v) -> permute_result {
+auto permute_multiply(std::vector<step> &s, const std::vector<int> &v) -> permute_result {
+    auto sz = v.size();
+    permute_result ret = permute_result::nothing;
+    std::vector<int> r;
+
+    /*
+     * We want to find all the permutations of multiplications within the input vector.
+     * Multiplication is commutative so (a * b) = (b * a), meaning we don't need to examine
+     * any scenarios we've already seen.
+     */
+    for (auto i = 0; i < (sz - 1); ++i) {
+        /*
+         * Multiplying by 1 doesn't get us anywhere.
+         */
+        if (v[i] == 1) {
+            continue;
+        }
+
+        for (auto j = i + 1; j < sz; ++j) {
+            /*
+             * Multiplying by 1 doesn't get us anywhere.
+             */
+            if (v[j] == 1) {
+                continue;
+            }
+
+            auto new_val = v[i] * v[j];
+            s.emplace_back(step(new_val, operator_type::multiply, v[i], v[j]));
+
+            if (new_val == target) {
+                dump_steps(s, "exact");
+                if (!find_all_exact) {
+                    return permute_result::match;
+                }
+
+                closest = new_val;
+                ret = permute_result::match;
+            }
+
+            /*
+             * If we have more than 2 values in our input vector then we can iterate further,
+             * combining our new result with all unused inputs.
+             */
+            if (sz > 2) {
+                r.reserve(sz - 1);
+                r.emplace_back(new_val);
+
+                for (auto k = 0; k < sz; ++k) {
+                    if ((k != i) && (k != j)) {
+                        r.emplace_back(v[k]);
+                    }
+                }
+
+                auto pa = permute_all(s, r);
+                if (pa == permute_result::match) {
+                    if (!find_all_exact) {
+                        return permute_result::match;
+                    }
+                }
+
+                r.clear();
+            }
+
+            if (abs(target - new_val) < abs(target - closest)) {
+                dump_steps(s, "close");
+                closest = new_val;
+                ret = permute_result::close;
+            }
+
+            s.pop_back();
+        }
+    }
+
+    return ret;
+}
+
+/*
+ * Run permutations of an input vector for division.
+ */
+auto permute_divide(std::vector<step> &s, const std::vector<int> &v) -> permute_result {
     auto sz = v.size();
     permute_result ret = permute_result::nothing;
     std::vector<int> r;
@@ -224,59 +412,10 @@ auto permute_multiply(const std::vector<int> &v) -> permute_result {
                 continue;
             }
 
-            auto new_val = v[i] * v[j];
-            if (new_val == target) {
-                std::cout << "\nexact: " << new_val << " = " << v[i] << " * " << v[j] << '\n';
-                return permute_result::match;
-            }
-
             /*
-             * If we have more than 2 values then we can iterate further.
+             * Dividing by 1 doesn't get us anywhere.
              */
-            if (sz > 2) {
-                r.reserve(sz - 1);
-                r.emplace_back(new_val);
-
-                for (auto k = 0; k < sz; ++k) {
-                    if ((k != i) && (k != j)) {
-                        r.emplace_back(v[k]);
-                    }
-                }
-
-                auto pa = permute_all(r);
-                if (pa != permute_result::nothing) {
-                    std::cout << new_val << " = " << v[i] << " * " << v[j] << '\n';
-                    return pa;
-                }
-
-                r.clear();
-            }
-
-            if (abs(target - new_val) < abs(target - closest)) {
-                std::cout << "\nclose: " << new_val << " = " << v[i] << " * " << v[j] << '\n';
-                closest = new_val;
-                ret = permute_result::close;
-            }
-        }
-    }
-
-    return ret;
-}
-
-/*
- * Run permutations of an input vector for division.
- */
-auto permute_divide(const std::vector<int> &v) -> permute_result {
-    auto sz = v.size();
-    permute_result ret = permute_result::nothing;
-    std::vector<int> r;
-
-    for (auto i = 0; i < sz; ++i) {
-        for (auto j = 0; j < sz; ++j) {
-            /*
-             * We can't use the same tile or intermediate value twice.
-             */
-            if (i == j) {
+            if (v[j] == 1) {
                 continue;
             }
 
@@ -287,16 +426,32 @@ auto permute_divide(const std::vector<int> &v) -> permute_result {
              * any more progress down this particular path.
              */
             if (v[i] % v[j]) {
-                break;
-            }
-
-            if (new_val == target) {
-                std::cout << "\nexact: " << new_val << " = " << v[i] << " / " << v[j] << '\n';
-                return permute_result::match;
+                continue;
             }
 
             /*
-             * If we have more than 2 values then we can iterate further.
+             * If our division results in the same value as our divisor then we've also
+             * hit a dead end because we've not introduced any useful new intermediate value.
+             */
+            if (new_val == v[j]) {
+                continue;
+            }
+
+            s.emplace_back(step(new_val, operator_type::divide, v[i], v[j]));
+
+            if (new_val == target) {
+                dump_steps(s, "exact");
+                if (!find_all_exact) {
+                    return permute_result::match;
+                }
+
+                closest = new_val;
+                ret = permute_result::match;
+            }
+
+            /*
+             * If we have more than 2 values in our input vector then we can iterate further,
+             * combining our new result with all unused inputs.
              */
             if (sz > 2) {
                 r.reserve(sz - 1);
@@ -308,20 +463,23 @@ auto permute_divide(const std::vector<int> &v) -> permute_result {
                     }
                 }
 
-                auto pa = permute_all(r);
-                if (pa != permute_result::nothing) {
-                    std::cout << new_val << " = " << v[i] << " / " << v[j] << '\n';
-                    return pa;
+                auto pa = permute_all(s, r);
+                if (pa == permute_result::match) {
+                    if (!find_all_exact) {
+                        return permute_result::match;
+                    }
                 }
 
                 r.clear();
             }
 
             if (abs(target - new_val) < abs(target - closest)) {
-                std::cout << "\nclose: " << new_val << " = " << v[i] << " / " << v[j] << '\n';
+                dump_steps(s, "close");
                 closest = new_val;
                 ret = permute_result::close;
             }
+
+            s.pop_back();
         }
     }
 
@@ -375,14 +533,20 @@ auto main(int argc, char **argv) -> int {
 
     std::cout << "\n\n";
 
+    /*
+     * In trivial cases we just have the right number in our starting set.
+     */
     for (auto i = 0; i < sz; ++i) {
         if (target == v[i]) {
-            std::cout << target << " = " << v[i] << '\n';
+            std::cout << "exact: " << target << " = " << v[i] << '\n';
             return 0;
         }
     }
 
-    if (permute_all(v) == permute_result::match) {
+    std::vector<step> s;
+    auto pa = permute_all(s, v);
+    std::cout << '\n';
+    if (pa == permute_result::match) {
         return 0;
     }
 
