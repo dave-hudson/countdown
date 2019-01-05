@@ -1,5 +1,7 @@
 /*
  * countdown.cpp
+ *
+ * Solves the Countdown numbers game (from UK Channel 4).
  */
 #include <iostream>
 #include <vector>
@@ -53,49 +55,6 @@ auto permute_add(std::vector<step> &s, const std::vector<int> &v) -> void;
 auto permute_subtract(std::vector<step> &s, const std::vector<int> &v) -> void;
 auto permute_multiply(std::vector<step> &s, const std::vector<int> &v) -> void;
 auto permute_divide(std::vector<step> &s, const std::vector<int> &v) -> void;
-
-/*
- * Output a step vector.
- */
-auto dump_steps(const std::vector<step> &s) -> void {
-    if (closest == target) {
-        std::cout << "solved: ";
-    } else {
-        std::cout << abs(target - closest) << " away: ";
-    }
-
-    auto sz = s.size();
-    for (auto i = 0; i < sz; ++i) {
-        if (i != 0) {
-            std::cout << ", ";
-        }
-
-        auto &st = s[i];
-        std::cout << st._result << " = " << st._operand1;
-
-        switch (st._op_type) {
-        case operator_type::add:
-            std::cout << " + ";
-            break;
-
-        case operator_type::subtract:
-            std::cout << " - ";
-            break;
-
-        case operator_type::multiply:
-            std::cout << " * ";
-            break;
-
-        case operator_type::divide:
-            std::cout << " / ";
-            break;
-        }
-
-        std::cout << st._operand2;
-    }
-
-    std::cout << '\n';
-}
 
 /*
  * Run all the possible permutations for the current input vector.
@@ -330,28 +289,57 @@ auto setup_puzzle() -> std::vector<int> {
 }
 
 /*
+ * Output a step vector.
+ */
+auto dump_steps(const std::vector<step> &s) -> void {
+    if (closest == target) {
+        std::cout << "solved:\n";
+    } else {
+        std::cout << abs(target - closest) << " away:\n";
+    }
+
+    auto sz = s.size();
+    for (auto i = 0; i < sz; ++i) {
+        auto &st = s[i];
+        std::cout << st._operand1;
+
+        switch (st._op_type) {
+        case operator_type::add:
+            std::cout << " + ";
+            break;
+
+        case operator_type::subtract:
+            std::cout << " - ";
+            break;
+
+        case operator_type::multiply:
+            std::cout << " * ";
+            break;
+
+        case operator_type::divide:
+            std::cout << " / ";
+            break;
+        }
+
+        std::cout << st._operand2 << " = " << st._result << '\n';
+    }
+
+    std::cout << '\n';
+}
+
+/*
  * Entry point.
  */
 auto main(int argc, char **argv) -> int {
     auto v = setup_puzzle();
-    std::cout << target << " : ";
+    std::cout << "Numbers are:";
 
     auto sz = v.size();
     for (auto i = 0; i < sz; ++i) {
-        std::cout << v[i] << " ";
+        std::cout << " " << v[i];
     }
 
-    std::cout << "\n\n";
-
-    /*
-     * In trivial cases we just have the right number in our starting set.
-     */
-    for (auto i = 0; i < sz; ++i) {
-        if (target == v[i]) {
-            std::cout << "exact: " << target << " = " << v[i] << '\n';
-            return 0;
-        }
-    }
+    std::cout << ", target is: " << target << "\n\n";
 
     std::vector<step> s;
     permute_all(s, v);
