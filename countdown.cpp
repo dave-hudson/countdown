@@ -70,13 +70,13 @@ auto permute_all(std::vector<step> &s, const std::vector<int> &v) -> void {
  * Handle the common operations associated with any permutation.
  */
 auto permute_common(std::vector<step> &s, std::vector<int> &r, const std::vector<int> &v, int new_val, operator_type op, int i, int j) -> void {
-    auto sz = v.size();
+    auto sz = static_cast<int>(v.size());
 
     s.emplace_back(step(new_val, op, v[i], v[j]));
 
     if (new_val == target) {
         match = s;
-        lowest_steps = s.size();
+        lowest_steps = static_cast<int>(s.size());
         closest = new_val;
     }
 
@@ -84,7 +84,7 @@ auto permute_common(std::vector<step> &s, std::vector<int> &r, const std::vector
      * If another iteration can still result in a shorter solution than the best
      * we've found so far then proceed.
      */
-    if ((lowest_steps - 1) > s.size()) {
+    if ((lowest_steps - 1) > static_cast<int>(s.size())) {
         /*
          * If we have more than 2 values in our input vector then we can iterate further,
          * combining our new result with all unused inputs.
@@ -116,7 +116,7 @@ auto permute_common(std::vector<step> &s, std::vector<int> &r, const std::vector
  * Run permutations of an input vector for addition.
  */
 auto permute_add(std::vector<step> &s, const std::vector<int> &v) -> void {
-    auto sz = v.size();
+    auto sz = static_cast<int>(v.size());
     std::vector<int> r;
 
     /*
@@ -139,7 +139,7 @@ auto permute_add(std::vector<step> &s, const std::vector<int> &v) -> void {
  * Run permutations of an input vector for subtraction.
  */
 auto permute_subtract(std::vector<step> &s, const std::vector<int> &v) -> void {
-    auto sz = v.size();
+    auto sz = static_cast<int>(v.size());
     std::vector<int> r;
 
     for (auto i = 0; i < sz; ++i) {
@@ -179,7 +179,7 @@ auto permute_subtract(std::vector<step> &s, const std::vector<int> &v) -> void {
  * Run permutations of an input vector for multiplication.
  */
 auto permute_multiply(std::vector<step> &s, const std::vector<int> &v) -> void {
-    auto sz = v.size();
+    auto sz = static_cast<int>(v.size());
     std::vector<int> r;
 
     /*
@@ -213,7 +213,7 @@ auto permute_multiply(std::vector<step> &s, const std::vector<int> &v) -> void {
  * Run permutations of an input vector for division.
  */
 auto permute_divide(std::vector<step> &s, const std::vector<int> &v) -> void {
-    auto sz = v.size();
+    auto sz = static_cast<int>(v.size());
     std::vector<int> r;
 
     for (auto i = 0; i < sz; ++i) {
@@ -298,7 +298,7 @@ auto dump_steps(const std::vector<step> &s) -> void {
         std::cout << abs(target - closest) << " away:\n";
     }
 
-    auto sz = s.size();
+    auto sz = static_cast<int>(s.size());
     for (auto i = 0; i < sz; ++i) {
         auto &st = s[i];
         std::cout << st._operand1;
@@ -334,7 +334,7 @@ auto main(int argc, char **argv) -> int {
     auto v = setup_puzzle();
     std::cout << "Numbers are:";
 
-    auto sz = v.size();
+    auto sz = static_cast<int>(v.size());
     for (auto i = 0; i < sz; ++i) {
         std::cout << " " << v[i];
     }
