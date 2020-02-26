@@ -46,6 +46,7 @@ public:
         _tiles = tiles;
         _closest = 0;
         _fewest_steps = 7;
+        _rounds = 0;
     };
 
     auto compute() -> void {
@@ -60,10 +61,15 @@ public:
         return _closest;
     }
 
+    auto get_rounds() -> int {
+        return _rounds;
+    }
+
 private:
     std::vector<int> _tiles;            // The tiles we have to use
     int _target;                        // The number are we trying to hit
     int _closest;                       // The closest we've got to the target number
+    int _rounds;                        // The number of rounds we do to reach our result
     int _fewest_steps;                  // Smallest number of steps so far
     std::vector<step> _working_steps;   // The set of working steps we have in any given iteration
     std::vector<step> _best_steps;      // Best set of steps that we found
@@ -78,6 +84,8 @@ private:
      * Run all the possible permutations for the current input vector.
      */
     auto permute_all(const std::vector<int> &v) -> void {
+        _rounds++;
+
         permute_add(v);
         permute_subtract(v);
         permute_multiply(v);
@@ -357,11 +365,15 @@ auto main(int argc, char **argv) -> int {
     /*
      * Output the results.
      */
+    std::cout << "after: ";
+    std::cout << c.get_rounds();
+    std::cout << " rounds, ";
+
     auto closest = c.get_closest();
     if (closest == target) {
-        std::cout << "solved:\n";
+        std::cout << "solved:\n\n";
     } else {
-        std::cout << abs(target - closest) << " away:\n";
+        std::cout << abs(target - closest) << " away:\n\n";
     }
 
     dump_steps(c.get_best_steps());
