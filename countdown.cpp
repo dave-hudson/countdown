@@ -74,10 +74,10 @@ private:
     std::vector<step> _working_steps;   // The set of working steps we have in any given iteration
     std::vector<step> _best_steps;      // Best set of steps that we found
 
-    auto permute_add(const std::vector<int> &v) -> void;
-    auto permute_subtract(const std::vector<int> &v) -> void;
-    auto permute_multiply(const std::vector<int> &v) -> void;
-    auto permute_divide(const std::vector<int> &v) -> void;
+    inline auto permute_add(const std::vector<int> &v) -> void;
+    inline auto permute_subtract(const std::vector<int> &v) -> void;
+    inline auto permute_multiply(const std::vector<int> &v) -> void;
+    inline auto permute_divide(const std::vector<int> &v) -> void;
     auto permute_common(const std::vector<int> &v, int new_val, operator_type op, int i, int j) -> void;
 
     /*
