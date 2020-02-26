@@ -28,7 +28,7 @@ public:
     int _operand1;
     int _operand2;
 
-    step(int result, operator_type op_type, int operand1, int operand2) {
+    step(int result = 0, operator_type op_type = operator_type::add, int operand1 = 0, int operand2 = 0) {
         _result = result;
         _op_type = op_type;
         _operand1 = operand1;
@@ -41,20 +41,28 @@ public:
  */
 class countdown {
 public:
-    countdown(int target, const std::vector<int> tiles) {
+    countdown(int target, int tiles[6]) {
         _target = target;
-        _tiles = tiles;
+        for (auto i = 0; i < 6; i++) {
+            _tiles[i] = tiles[i];
+        }
         _closest = 0;
         _fewest_steps = 7;
         _rounds = 0;
+        _working_steps_sz = 0;
+        _best_steps_sz = 0;
     };
 
     auto compute() -> void {
-        permute_all(_tiles, _tiles.size());
+        permute_all(_tiles, 6);
     }
 
     auto get_best_steps() -> const std::vector<step> {
-        return _best_steps;
+        std::vector<step> s;
+        for (auto i = 0; i < _best_steps_sz; ++i) {
+            s.emplace_back(_best_steps[i]);
+        }
+        return s;
     }
 
     auto get_closest() -> int {
@@ -66,24 +74,26 @@ public:
     }
 
 private:
-    std::vector<int> _tiles;            // The tiles we have to use
+    int _tiles[6];                      // The tiles we have to use
     int _target;                        // The number are we trying to hit
     int _closest;                       // The closest we've got to the target number
     int _rounds;                        // The number of rounds we do to reach our result
     int _fewest_steps;                  // Smallest number of steps so far
-    std::vector<step> _working_steps;   // The set of working steps we have in any given iteration
-    std::vector<step> _best_steps;      // Best set of steps that we found
+    step _working_steps[6];             // The set of working steps we have in any given iteration
+    int _working_steps_sz;              // Number of steps in our working set of steps
+    step _best_steps[6];                // Best set of steps that we found
+    int _best_steps_sz;                 // Number of steps in the best solution we currently have
 
-    inline auto permute_add(const std::vector<int> &v, int v_sz) -> void;
-    inline auto permute_subtract(const std::vector<int> &v, int v_sz) -> void;
-    inline auto permute_multiply(const std::vector<int> &v, int v_sz) -> void;
-    inline auto permute_divide(const std::vector<int> &v, int v_sz) -> void;
-    auto permute_common(int new_val, operator_type op, const std::vector<int> &v, int v_sz, int i, int j) -> void;
+    inline auto permute_add(const int v[6], int v_sz) -> void;
+    inline auto permute_subtract(const int v[6], int v_sz) -> void;
+    inline auto permute_multiply(const int v[6], int v_sz) -> void;
+    inline auto permute_divide(const int v[6], int v_sz) -> void;
+    auto permute_common(int new_val, operator_type op, const int v[6], int v_sz, int i, int j) -> void;
 
     /*
      * Run all the possible permutations for the current input vector.
      */
-    auto permute_all(const std::vector<int> &v, int v_sz) -> void {
+    auto permute_all(const int v[6], int v_sz) -> void {
         _rounds++;
 
         permute_add(v, v_sz);
@@ -105,54 +115,56 @@ int starting_grid[] = {
 /*
  * Handle the common operations associated with any permutation.
  */
-auto countdown::permute_common(int new_val, operator_type op, const std::vector<int> &v, int v_sz, int i, int j) -> void {
-    _working_steps.emplace_back(step(new_val, op, v[i], v[j]));
+auto countdown::permute_common(int new_val, operator_type op, const int v[6], int v_sz, int i, int j) -> void {
+    _working_steps[_working_steps_sz++] = step(new_val, op, v[i], v[j]);
 
-    if (new_val == _target) {
-        _best_steps = _working_steps;
-        _fewest_steps = static_cast<int>(_working_steps.size());
+    if (abs(_target - new_val) < abs(_target - _closest)) {
+        for (auto i = 0; i < _working_steps_sz; ++i) {
+            _best_steps[i] = _working_steps[i];
+        }
+        _best_steps_sz = _working_steps_sz;
         _closest = new_val;
+
+        if (new_val == _target) {
+            _fewest_steps = _working_steps_sz;
+            _working_steps_sz--;
+            return;
+        }
     }
 
     /*
      * If another iteration can still result in a shorter solution than the best
      * we've found so far then proceed.
      */
-    if ((_fewest_steps - 1) > static_cast<int>(_working_steps.size())) {
+    if ((_fewest_steps - 1) > _working_steps_sz) {
         /*
          * If we have more than 2 values in our input vector then we can iterate further,
          * combining our new result with all unused inputs.
          */
         if (v_sz > 2) {
-            std::vector<int> r;
-            r.reserve(v_sz - 1);
-            r.emplace_back(new_val);
+            int new_v[6];
+            auto idx = 0;
+            new_v[idx++] = new_val;
 
             for (auto k = 0; k < v_sz; ++k) {
                 if ((k != i) && (k != j)) {
-                    r.emplace_back(v[k]);
+                    new_v[idx++] = v[k];
                 }
             }
 
-            permute_all(r, v_sz - 1);
-            r.clear();
-        }
-
-        if (abs(_target - new_val) < abs(_target - _closest)) {
-            _best_steps = _working_steps;
-            _closest = new_val;
+            permute_all(new_v, v_sz - 1);
         }
     }
 
-    _working_steps.pop_back();
+    _working_steps_sz--;
 }
 
 /*
- * Run permutations of an input vector for addition.
+ * Run permutations of an input array for addition.
  */
-auto countdown::permute_add(const std::vector<int> &v, int v_sz) -> void {
+auto countdown::permute_add(const int v[6], int v_sz) -> void {
     /*
-     * We want to find all the permutations of additions within the input vector.
+     * We want to find all the permutations of additions within the input array.
      * Addition is commutative so (a + b) = (b + a), meaning we don't need to examine
      * any scenarios we've already seen.
      */
@@ -168,9 +180,9 @@ auto countdown::permute_add(const std::vector<int> &v, int v_sz) -> void {
 }
 
 /*
- * Run permutations of an input vector for subtraction.
+ * Run permutations of an input array for subtraction.
  */
-auto countdown::permute_subtract(const std::vector<int> &v, int v_sz) -> void {
+auto countdown::permute_subtract(const int v[6], int v_sz) -> void {
     for (auto i = 0; i < v_sz; ++i) {
         for (auto j = 0; j < v_sz; ++j) {
             /*
@@ -205,11 +217,11 @@ auto countdown::permute_subtract(const std::vector<int> &v, int v_sz) -> void {
 }
 
 /*
- * Run permutations of an input vector for multiplication.
+ * Run permutations of an input array for multiplication.
  */
-auto countdown::permute_multiply(const std::vector<int> &v, int v_sz) -> void {
+auto countdown::permute_multiply(const int v[6], int v_sz) -> void {
     /*
-     * We want to find all the permutations of multiplications within the input vector.
+     * We want to find all the permutations of multiplications within the input array.
      * Multiplication is commutative so (a * b) = (b * a), meaning we don't need to examine
      * any scenarios we've already seen.
      */
@@ -236,9 +248,9 @@ auto countdown::permute_multiply(const std::vector<int> &v, int v_sz) -> void {
 }
 
 /*
- * Run permutations of an input vector for division.
+ * Run permutations of an input array for division.
  */
-auto countdown::permute_divide(const std::vector<int> &v, int v_sz) -> void {
+auto countdown::permute_divide(const int v[6], int v_sz) -> void {
     for (auto i = 0; i < v_sz; ++i) {
         for (auto j = 0; j < v_sz; ++j) {
             /*
@@ -315,7 +327,7 @@ auto dump_steps(const std::vector<step> &s) -> void {
  * Entry point.
  */
 auto main(int argc, char **argv) -> int {
-    std::vector<int> v;
+    int v[6];
 
     /*
      * Randomize our tiles.
@@ -333,7 +345,7 @@ auto main(int argc, char **argv) -> int {
             time = random() % 24;
         } while (starting_grid[time] < 0);
 
-        v.emplace_back(starting_grid[time]);
+        v[i] = starting_grid[time];
         starting_grid[time] = -1;
 
         std::cout << " " << v[i];
