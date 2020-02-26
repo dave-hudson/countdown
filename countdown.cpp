@@ -37,6 +37,55 @@ public:
 };
 
 /*
+ * Countdown computation class.
+ */
+class countdown {
+public:
+    countdown(int target, const std::vector<int> tiles) {
+        _target = target;
+        _tiles = tiles;
+        _closest = 0;
+        _fewest_steps = 7;
+    };
+
+    auto compute() -> void {
+        permute_all(_tiles);
+    }
+
+    auto get_best_steps() -> const std::vector<step> {
+        return _best_steps;
+    }
+
+    auto get_closest() -> int {
+        return _closest;
+    }
+
+private:
+    std::vector<int> _tiles;            // The tiles we have to use
+    int _target;                        // The number are we trying to hit
+    int _closest;                       // The closest we've got to the target number
+    int _fewest_steps;                  // Smallest number of steps so far
+    std::vector<step> _working_steps;   // The set of working steps we have in any given iteration
+    std::vector<step> _best_steps;      // Best set of steps that we found
+
+    auto permute_add(const std::vector<int> &v) -> void;
+    auto permute_subtract(const std::vector<int> &v) -> void;
+    auto permute_multiply(const std::vector<int> &v) -> void;
+    auto permute_divide(const std::vector<int> &v) -> void;
+    auto permute_common(const std::vector<int> &v, int new_val, operator_type op, int i, int j) -> void;
+
+    /*
+     * Run all the possible permutations for the current input vector.
+     */
+    auto permute_all(const std::vector<int> &v) -> void {
+        permute_add(v);
+        permute_subtract(v);
+        permute_multiply(v);
+        permute_divide(v);
+    }
+};
+
+/*
  * Starting grid.
  */
 int starting_grid[] = {
@@ -45,51 +94,31 @@ int starting_grid[] = {
     5, 5, 4, 4, 3, 3, 2, 2, 1, 1
 };
 
-int puzzle[6];                          // The 6 tiles we selected
-int target;                             // The number are we trying to hit
-int closest;                            // The closest we've got to the target number
-std::vector<step> match;                // Best match that we found
-int lowest_steps = 7;                   // Smallest number of steps so far
-
-auto permute_add(std::vector<step> &s, const std::vector<int> &v) -> void;
-auto permute_subtract(std::vector<step> &s, const std::vector<int> &v) -> void;
-auto permute_multiply(std::vector<step> &s, const std::vector<int> &v) -> void;
-auto permute_divide(std::vector<step> &s, const std::vector<int> &v) -> void;
-
-/*
- * Run all the possible permutations for the current input vector.
- */
-auto permute_all(std::vector<step> &s, const std::vector<int> &v) -> void {
-    permute_add(s, v);
-    permute_subtract(s, v);
-    permute_multiply(s, v);
-    permute_divide(s, v);
-}
-
 /*
  * Handle the common operations associated with any permutation.
  */
-auto permute_common(std::vector<step> &s, std::vector<int> &r, const std::vector<int> &v, int new_val, operator_type op, int i, int j) -> void {
+auto countdown::permute_common(const std::vector<int> &v, int new_val, operator_type op, int i, int j) -> void {
     auto sz = static_cast<int>(v.size());
 
-    s.emplace_back(step(new_val, op, v[i], v[j]));
+    _working_steps.emplace_back(step(new_val, op, v[i], v[j]));
 
-    if (new_val == target) {
-        match = s;
-        lowest_steps = static_cast<int>(s.size());
-        closest = new_val;
+    if (new_val == _target) {
+        _best_steps = _working_steps;
+        _fewest_steps = static_cast<int>(_working_steps.size());
+        _closest = new_val;
     }
 
     /*
      * If another iteration can still result in a shorter solution than the best
      * we've found so far then proceed.
      */
-    if ((lowest_steps - 1) > static_cast<int>(s.size())) {
+    if ((_fewest_steps - 1) > static_cast<int>(_working_steps.size())) {
         /*
          * If we have more than 2 values in our input vector then we can iterate further,
          * combining our new result with all unused inputs.
          */
         if (sz > 2) {
+            std::vector<int> r;
             r.reserve(sz - 1);
             r.emplace_back(new_val);
 
@@ -99,25 +128,24 @@ auto permute_common(std::vector<step> &s, std::vector<int> &r, const std::vector
                 }
             }
 
-            permute_all(s, r);
+            permute_all(r);
             r.clear();
         }
 
-        if (abs(target - new_val) < abs(target - closest)) {
-            match = s;
-            closest = new_val;
+        if (abs(_target - new_val) < abs(_target - _closest)) {
+            _best_steps = _working_steps;
+            _closest = new_val;
         }
     }
 
-    s.pop_back();
+    _working_steps.pop_back();
 }
 
 /*
  * Run permutations of an input vector for addition.
  */
-auto permute_add(std::vector<step> &s, const std::vector<int> &v) -> void {
+auto countdown::permute_add(const std::vector<int> &v) -> void {
     auto sz = static_cast<int>(v.size());
-    std::vector<int> r;
 
     /*
      * We want to find all the permutations of additions within the input vector.
@@ -130,7 +158,7 @@ auto permute_add(std::vector<step> &s, const std::vector<int> &v) -> void {
              * Compute a permutation, and check if it results in an exact match.
              */
             auto new_val = v[i] + v[j];
-            permute_common(s, r, v, new_val, operator_type::add, i, j);
+            permute_common(v, new_val, operator_type::add, i, j);
         }
     }
 }
@@ -138,9 +166,8 @@ auto permute_add(std::vector<step> &s, const std::vector<int> &v) -> void {
 /*
  * Run permutations of an input vector for subtraction.
  */
-auto permute_subtract(std::vector<step> &s, const std::vector<int> &v) -> void {
+auto countdown::permute_subtract(const std::vector<int> &v) -> void {
     auto sz = static_cast<int>(v.size());
-    std::vector<int> r;
 
     for (auto i = 0; i < sz; ++i) {
         for (auto j = 0; j < sz; ++j) {
@@ -170,7 +197,7 @@ auto permute_subtract(std::vector<step> &s, const std::vector<int> &v) -> void {
                 continue;
             }
 
-            permute_common(s, r, v, new_val, operator_type::subtract, i, j);
+            permute_common(v, new_val, operator_type::subtract, i, j);
         }
     }
 }
@@ -178,9 +205,8 @@ auto permute_subtract(std::vector<step> &s, const std::vector<int> &v) -> void {
 /*
  * Run permutations of an input vector for multiplication.
  */
-auto permute_multiply(std::vector<step> &s, const std::vector<int> &v) -> void {
+auto countdown::permute_multiply(const std::vector<int> &v) -> void {
     auto sz = static_cast<int>(v.size());
-    std::vector<int> r;
 
     /*
      * We want to find all the permutations of multiplications within the input vector.
@@ -204,7 +230,7 @@ auto permute_multiply(std::vector<step> &s, const std::vector<int> &v) -> void {
             }
 
             auto new_val = v[i] * v[j];
-            permute_common(s, r, v, new_val, operator_type::multiply, i, j);
+            permute_common(v, new_val, operator_type::multiply, i, j);
         }
     }
 }
@@ -212,9 +238,8 @@ auto permute_multiply(std::vector<step> &s, const std::vector<int> &v) -> void {
 /*
  * Run permutations of an input vector for division.
  */
-auto permute_divide(std::vector<step> &s, const std::vector<int> &v) -> void {
+auto countdown::permute_divide(const std::vector<int> &v) -> void {
     auto sz = static_cast<int>(v.size());
-    std::vector<int> r;
 
     for (auto i = 0; i < sz; ++i) {
         for (auto j = 0; j < sz; ++j) {
@@ -250,54 +275,15 @@ auto permute_divide(std::vector<step> &s, const std::vector<int> &v) -> void {
                 continue;
             }
 
-            permute_common(s, r, v, new_val, operator_type::divide, i, j);
+            permute_common(v, new_val, operator_type::divide, i, j);
         }
     }
-}
-
-/*
- * Select the numbers for the game.
- */
-auto setup_puzzle() -> std::vector<int> {
-    std::vector<int> v;
-
-    /*
-     * Randomize our tiles.
-     */
-    srandom(time(NULL));
-
-    /*
-     * Pick a random target in the range 101 to 999.
-     */
-    target = (random() % 899) + 101;
-    closest = 0;
-
-    /*
-     * Pick 6 unique random tiles.
-     */
-    for (auto i = 0; i < 6; ++i) {
-        int time;
-        do {
-            time = random() % 24;
-        } while (starting_grid[time] < 0);
-
-        v.emplace_back(starting_grid[time]);
-        starting_grid[time] = -1;
-    }
-
-    return v;
 }
 
 /*
  * Output a step vector.
  */
 auto dump_steps(const std::vector<step> &s) -> void {
-    if (closest == target) {
-        std::cout << "solved:\n";
-    } else {
-        std::cout << abs(target - closest) << " away:\n";
-    }
-
     auto sz = static_cast<int>(s.size());
     for (auto i = 0; i < sz; ++i) {
         auto &st = s[i];
@@ -331,20 +317,54 @@ auto dump_steps(const std::vector<step> &s) -> void {
  * Entry point.
  */
 auto main(int argc, char **argv) -> int {
-    auto v = setup_puzzle();
+    std::vector<int> v;
+
+    /*
+     * Randomize our tiles.
+     */
+    srandom(time(NULL));
+
     std::cout << "Numbers are:";
 
-    auto sz = static_cast<int>(v.size());
-    for (auto i = 0; i < sz; ++i) {
+    /*
+     * Pick 6 unique random tiles.
+     */
+    for (auto i = 0; i < 6; ++i) {
+        int time;
+        do {
+            time = random() % 24;
+        } while (starting_grid[time] < 0);
+
+        v.emplace_back(starting_grid[time]);
+        starting_grid[time] = -1;
+
         std::cout << " " << v[i];
     }
 
+    /*
+     * Pick a random target in the range 101 to 999.
+     */
+    auto target = (random() % 899) + 101;
+
     std::cout << ", target is: " << target << "\n\n";
 
-    std::vector<step> s;
-    permute_all(s, v);
+    /*
+     * Set up the problem and compute the best solution.
+     */
+    countdown c(target, v);
+    c.compute();
 
-    dump_steps(match);
+    /*
+     * Output the results.
+     */
+    auto closest = c.get_closest();
+    if (closest == target) {
+        std::cout << "solved:\n";
+    } else {
+        std::cout << abs(target - closest) << " away:\n";
+    }
+
+    dump_steps(c.get_best_steps());
 
     return 0;
 }
