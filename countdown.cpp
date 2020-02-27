@@ -4,6 +4,7 @@
  * Solves the Countdown numbers game (from UK Channel 4).
  */
 #include <iostream>
+#include <array>
 #include <vector>
 #include <cstdlib>
 #include <ctime>
@@ -74,26 +75,26 @@ public:
     }
 
 private:
-    int _tiles[6];                      // The tiles we have to use
+    std::array<int, 6> _tiles;          // The tiles we have to use
     int _target;                        // The number are we trying to hit
     int _closest;                       // The closest we've got to the target number
     int _rounds;                        // The number of rounds we do to reach our result
     int _fewest_steps;                  // Smallest number of steps so far
-    step _working_steps[6];             // The set of working steps we have in any given iteration
+    std::array<step, 6> _working_steps; // The set of working steps we have in any given iteration
     int _working_steps_sz;              // Number of steps in our working set of steps
-    step _best_steps[6];                // Best set of steps that we found
+    std::array<step, 6> _best_steps;    // Best set of steps that we found
     int _best_steps_sz;                 // Number of steps in the best solution we currently have
 
-    inline auto permute_add(const int v[6], int v_sz) -> void;
-    inline auto permute_subtract(const int v[6], int v_sz) -> void;
-    inline auto permute_multiply(const int v[6], int v_sz) -> void;
-    inline auto permute_divide(const int v[6], int v_sz) -> void;
-    auto permute_common(int new_val, operator_type op, const int v[6], int v_sz, int i, int j) -> void;
+    inline auto permute_add(const std::array<int, 6> &v, int v_sz) -> void;
+    inline auto permute_subtract(const std::array<int, 6> &v, int v_sz) -> void;
+    inline auto permute_multiply(const std::array<int, 6> &v, int v_sz) -> void;
+    inline auto permute_divide(const std::array<int, 6> &v, int v_sz) -> void;
+    auto permute_common(int new_val, operator_type op, const std::array<int, 6> &v, int v_sz, int i, int j) -> void;
 
     /*
      * Run all the possible permutations for the current input vector.
      */
-    auto permute_all(const int v[6], int v_sz) -> void {
+    auto permute_all(const std::array<int, 6> &v, int v_sz) -> void {
         _rounds++;
 
         permute_add(v, v_sz);
@@ -115,7 +116,7 @@ int starting_grid[] = {
 /*
  * Handle the common operations associated with any permutation.
  */
-auto countdown::permute_common(int new_val, operator_type op, const int v[6], int v_sz, int i, int j) -> void {
+auto countdown::permute_common(int new_val, operator_type op, const std::array<int, 6> &v, int v_sz, int i, int j) -> void {
     _working_steps[_working_steps_sz++] = step(new_val, op, v[i], v[j]);
 
     if (abs(_target - new_val) < abs(_target - _closest)) {
@@ -142,7 +143,7 @@ auto countdown::permute_common(int new_val, operator_type op, const int v[6], in
          * combining our new result with all unused inputs.
          */
         if (v_sz > 2) {
-            int new_v[6];
+            std::array<int, 6> new_v;
             auto idx = 0;
             new_v[idx++] = new_val;
 
@@ -162,7 +163,7 @@ auto countdown::permute_common(int new_val, operator_type op, const int v[6], in
 /*
  * Run permutations of an input array for addition.
  */
-auto countdown::permute_add(const int v[6], int v_sz) -> void {
+auto countdown::permute_add(const std::array<int, 6> &v, int v_sz) -> void {
     /*
      * We want to find all the permutations of additions within the input array.
      * Addition is commutative so (a + b) = (b + a), meaning we don't need to examine
@@ -182,7 +183,7 @@ auto countdown::permute_add(const int v[6], int v_sz) -> void {
 /*
  * Run permutations of an input array for subtraction.
  */
-auto countdown::permute_subtract(const int v[6], int v_sz) -> void {
+auto countdown::permute_subtract(const std::array<int, 6> &v, int v_sz) -> void {
     for (auto i = 0; i < v_sz; ++i) {
         for (auto j = 0; j < v_sz; ++j) {
             /*
@@ -219,7 +220,7 @@ auto countdown::permute_subtract(const int v[6], int v_sz) -> void {
 /*
  * Run permutations of an input array for multiplication.
  */
-auto countdown::permute_multiply(const int v[6], int v_sz) -> void {
+auto countdown::permute_multiply(const std::array<int, 6> &v, int v_sz) -> void {
     /*
      * We want to find all the permutations of multiplications within the input array.
      * Multiplication is commutative so (a * b) = (b * a), meaning we don't need to examine
@@ -250,7 +251,7 @@ auto countdown::permute_multiply(const int v[6], int v_sz) -> void {
 /*
  * Run permutations of an input array for division.
  */
-auto countdown::permute_divide(const int v[6], int v_sz) -> void {
+auto countdown::permute_divide(const std::array<int, 6> &v, int v_sz) -> void {
     for (auto i = 0; i < v_sz; ++i) {
         for (auto j = 0; j < v_sz; ++j) {
             /*
